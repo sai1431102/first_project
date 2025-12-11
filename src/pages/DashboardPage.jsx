@@ -360,10 +360,26 @@ export default function DashboardPage() {
   function handleJoinById(e) {
     e?.preventDefault();
     if (!joinId.trim()) {
-      alert("Please paste a meeting ID");
+      alert("Please paste a meeting ID or meeting URL");
       return;
     }
-    navigate(`/meeting/${joinId.trim()}`);
+    
+    let meetingId = joinId.trim();
+    
+    // Extract meeting ID from URL if full URL is pasted
+    // Handles formats like: http://localhost:5173/meeting/123 or /meeting/123
+    const urlMatch = meetingId.match(/\/meeting\/([^/?]+)/);
+    if (urlMatch) {
+      meetingId = urlMatch[1];
+    }
+    
+    // Validate it looks like a UUID (basic check)
+    if (!meetingId || meetingId.length < 10) {
+      alert("Invalid meeting ID. Please paste a valid meeting ID or meeting URL.");
+      return;
+    }
+    
+    navigate(`/meeting/${meetingId}`);
   }
 
   // simple sign out
@@ -531,7 +547,7 @@ export default function DashboardPage() {
             </h2>
             <form onSubmit={handleJoinById} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <input
-                placeholder="Paste meeting ID (uuid)"
+                placeholder="Paste meeting ID or meeting URL"
                 value={joinId}
                 onChange={e => setJoinId(e.target.value)}
                 style={{
