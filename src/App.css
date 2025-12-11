@@ -1,0 +1,5 @@
+/* App-specific styles - kept minimal to avoid conflicts with globals.css */
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
