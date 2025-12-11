@@ -56,6 +56,7 @@ export function joinMeetingChannel(meetingId, onMessage) {
 /**
  * sendSignal(channel, payload)
  * - payload should be serializable e.g. { from, type, sdp?, candidate? }
+ * - Uses broadcast() method instead of deprecated send()
  */
 export function sendSignal(channel, payload) {
   if (!channel) return;
@@ -63,6 +64,12 @@ export function sendSignal(channel, payload) {
     type: "broadcast",
     event: "signal",
     payload,
+  }).then((status) => {
+    if (status !== "ok") {
+      console.warn("Signal send status:", status);
+    }
+  }).catch((err) => {
+    console.error("Error sending signal:", err);
   });
 }
 
