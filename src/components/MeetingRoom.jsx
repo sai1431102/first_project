@@ -192,20 +192,26 @@ export default function MeetingRoom() {
           }
           
           // Always update to ensure we get the latest track
-          remoteVideoRef.current.srcObject = remoteStream;
+          // Check if we need to update the srcObject
+          if (remoteVideoRef.current.srcObject !== remoteStream) {
+            remoteVideoRef.current.srcObject = remoteStream;
+            console.log("Updated remote video srcObject");
+          }
           
-          // Force play to ensure the video updates
-          remoteVideoRef.current.play().then(() => {
-            console.log("Remote video playing successfully");
-          }).catch((err) => {
-            console.warn("Error playing remote video:", err);
-            // Try again after a short delay
-            setTimeout(() => {
-              if (remoteVideoRef.current && remoteVideoRef.current.srcObject === remoteStream) {
-                remoteVideoRef.current.play().catch(e => console.warn("Retry play failed:", e));
-              }
-            }, 100);
-          });
+          // Ensure video is playing
+          if (remoteVideoRef.current.paused) {
+            remoteVideoRef.current.play().then(() => {
+              console.log("Remote video playing successfully");
+            }).catch((err) => {
+              console.warn("Error playing remote video:", err);
+              // Try again after a short delay
+              setTimeout(() => {
+                if (remoteVideoRef.current && remoteVideoRef.current.srcObject === remoteStream) {
+                  remoteVideoRef.current.play().catch(e => console.warn("Retry play failed:", e));
+                }
+              }, 100);
+            });
+          }
         } else {
           console.log("Remote stream has no video tracks yet");
         }
