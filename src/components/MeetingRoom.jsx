@@ -115,6 +115,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useMeetingRoom } from "../hooks/useMeetingRoom";
+import { supabase } from "../lib/supabaseClient";
 
 /**
  * MeetingRoom
@@ -153,6 +154,7 @@ export default function MeetingRoom() {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const [sharing, setSharing] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
 
   useEffect(() => {
     // attach local stream to local video element
@@ -179,6 +181,32 @@ export default function MeetingRoom() {
     }
   }, [remoteStream]);
 
+  // Check if current user is the creator of the meeting
+  useEffect(() => {
+    async function checkIfCreator() {
+      if (!user || !meetingId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from("meetings")
+          .select("created_by")
+          .eq("id", meetingId)
+          .single();
+        
+        if (error) {
+          console.error("Error checking meeting creator:", error);
+          return;
+        }
+        
+        setIsCreator(data?.created_by === user.id);
+      } catch (err) {
+        console.error("Error in checkIfCreator:", err);
+      }
+    }
+    
+    checkIfCreator();
+  }, [user, meetingId]);
+
   // Detect when screen share starts/stops by checking localStream's video track label
   useEffect(() => {
     if (!localStream) {
@@ -194,6 +222,19 @@ export default function MeetingRoom() {
     const label = (vTrack.label || "").toLowerCase();
     setSharing(label.includes("screen") || label.includes("display") || label.includes("screen"));
   }, [localStream]);
+
+  // Copy invite link function (similar to dashboard)
+  function copyInviteLink() {
+    const origin = window.location.origin;
+    const inviteLink = `${origin}/meeting/${meetingId}`;
+    navigator.clipboard.writeText(inviteLink).then(
+      () => alert("Invite link copied to clipboard!"),
+      () => {
+        // fallback
+        prompt("Copy invite link (Ctrl/Cmd+C):", inviteLink);
+      }
+    );
+  }
 
   // wrappers with debug logs
   async function handleStartScreenShare() {
@@ -213,7 +254,7 @@ export default function MeetingRoom() {
     } catch (err) {
       console.warn("leaveMeeting error:", err);
     } finally {
-      navigate("/dashboard"); // or wherever you want users to land
+      navigate("/"); // Navigate to dashboard
     }
   }
 
@@ -357,6 +398,37 @@ export default function MeetingRoom() {
           >
             🖥️ Share Screen
           </button>
+          {isCreator && (
+            <button
+              onClick={copyInviteLink}
+              style={{
+                padding: "0.75rem 1.25rem",
+                background: "rgba(16, 185, 129, 0.2)",
+                color: "#10b981",
+                border: "2px solid #10b981",
+                borderRadius: "0.75rem",
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem"
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = "rgba(16, 185, 129, 0.3)";
+                e.target.style.transform = "translateY(-2px)";
+                e.target.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = "rgba(16, 185, 129, 0.2)";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "none";
+              }}
+            >
+              📋 Copy Invite Link
+            </button>
+          )}
           <button
             onClick={handleLeave}
             style={{
