@@ -102,7 +102,8 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
-  const redirectTo = params.get("redirect") || "/";
+  // Decode the redirect path (in case it was encoded)
+  const redirectTo = params.get("redirect") ? decodeURIComponent(params.get("redirect")) : "/";
 
   // Redirect authenticated users away from auth page
   useEffect(() => {
@@ -138,7 +139,9 @@ export default function AuthPage() {
         await signUp(email, password);
         // signUp may require email confirmation depending on Supabase settings
       }
-      navigate(redirectTo);
+      // Navigate to the redirect path (meeting room or dashboard)
+      // The useEffect will also handle this if user state updates, but we navigate here for immediate redirect
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       console.error("Auth error:", err);
       setError(err.message || "Authentication failed");
