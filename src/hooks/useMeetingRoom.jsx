@@ -352,24 +352,27 @@ export function useMeetingRoom(meetingId, user, isHost) {
       let trackAdded = false;
       let trackReplaced = false;
       
-      // Handle track replacement (e.g., when screen share replaces camera)
-      if (evt.track.kind === "video") {
-        // Remove old video track if it exists
-        const oldVideoTracks = remoteStreamRef.current.getVideoTracks();
-        oldVideoTracks.forEach(oldTrack => {
-          if (oldTrack.id !== evt.track.id) {
-            console.log("Removing old video track:", oldTrack.id, oldTrack.label);
-            remoteStreamRef.current.removeTrack(oldTrack);
-            oldTrack.stop();
-            trackReplaced = true;
-          }
-        });
-      }
-      
       // Add track to our persistent remote stream
       if (evt.track) {
         const existingTrack = remoteStreamRef.current.getTracks().find(t => t.id === evt.track.id);
         if (!existingTrack) {
+          // Check if this is a video track replacement (screen share replacing camera)
+          if (evt.track.kind === "video") {
+            const oldVideoTracks = remoteStreamRef.current.getVideoTracks();
+            // Only replace if we already have a video track (screen share replacing camera)
+            // Don't remove on first track (initial camera)
+            if (oldVideoTracks.length > 0) {
+              oldVideoTracks.forEach(oldTrack => {
+                if (oldTrack.id !== evt.track.id) {
+                  console.log("Replacing old video track with new one:", oldTrack.label, "->", evt.track.label);
+                  remoteStreamRef.current.removeTrack(oldTrack);
+                  oldTrack.stop();
+                  trackReplaced = true;
+                }
+              });
+            }
+          }
+          
           remoteStreamRef.current.addTrack(evt.track);
           trackAdded = true;
           console.log("Added track to remote stream. Total tracks:", remoteStreamRef.current.getTracks().length);
@@ -388,8 +391,7 @@ export function useMeetingRoom(meetingId, user, isHost) {
             onTrack(newStream);
           };
         } else {
-          console.log("Track already exists, might be a replacement");
-          trackReplaced = true;
+          console.log("Track already exists:", evt.track.id);
         }
       }
       
@@ -397,21 +399,24 @@ export function useMeetingRoom(meetingId, user, isHost) {
       if (evt.streams && evt.streams.length > 0) {
         evt.streams.forEach(stream => {
           stream.getTracks().forEach(track => {
-            // For video tracks, replace old ones
-            if (track.kind === "video") {
-              const oldVideoTracks = remoteStreamRef.current.getVideoTracks();
-              oldVideoTracks.forEach(oldTrack => {
-                if (oldTrack.id !== track.id) {
-                  console.log("Removing old video track from stream:", oldTrack.id);
-                  remoteStreamRef.current.removeTrack(oldTrack);
-                  oldTrack.stop();
-                  trackReplaced = true;
-                }
-              });
-            }
-            
             const existingTrack = remoteStreamRef.current.getTracks().find(t => t.id === track.id);
             if (!existingTrack) {
+              // For video tracks, check if we need to replace existing video track
+              if (track.kind === "video") {
+                const oldVideoTracks = remoteStreamRef.current.getVideoTracks();
+                // Only replace if we already have a video track
+                if (oldVideoTracks.length > 0) {
+                  oldVideoTracks.forEach(oldTrack => {
+                    if (oldTrack.id !== track.id) {
+                      console.log("Replacing old video track from stream:", oldTrack.label, "->", track.label);
+                      remoteStreamRef.current.removeTrack(oldTrack);
+                      oldTrack.stop();
+                      trackReplaced = true;
+                    }
+                  });
+                }
+              }
+              
               remoteStreamRef.current.addTrack(track);
               trackAdded = true;
               console.log("Added track from stream:", track.kind, track.id, track.label);
