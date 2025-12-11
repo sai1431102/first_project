@@ -172,11 +172,48 @@ export default function MeetingRoom() {
   useEffect(() => {
     // attach remote stream to remote video element
     if (remoteVideoRef.current) {
-      if (remoteStream) {
-        remoteVideoRef.current.srcObject = remoteStream;
-        remoteVideoRef.current.play().catch(() => {});
+      if (remoteStream && remoteStream.getTracks().length > 0) {
+        const videoTracks = remoteStream.getVideoTracks();
+        const audioTracks = remoteStream.getAudioTracks();
+        console.log("Setting remote stream - Video tracks:", videoTracks.length, "Audio tracks:", audioTracks.length);
+        
+        // Only set if we have video tracks
+        if (videoTracks.length > 0) {
+          const currentSrcObject = remoteVideoRef.current.srcObject;
+          const currentVideoTracks = currentSrcObject?.getVideoTracks() || [];
+          
+          // Check if this is a new track (screen share replacing camera)
+          const isNewTrack = !currentSrcObject || 
+            currentVideoTracks.length === 0 || 
+            currentVideoTracks[0].id !== videoTracks[0].id;
+          
+          if (isNewTrack) {
+            console.log("New video track detected, updating video element. Track label:", videoTracks[0].label);
+          }
+          
+          // Always update to ensure we get the latest track
+          remoteVideoRef.current.srcObject = remoteStream;
+          
+          // Force play to ensure the video updates
+          remoteVideoRef.current.play().then(() => {
+            console.log("Remote video playing successfully");
+          }).catch((err) => {
+            console.warn("Error playing remote video:", err);
+            // Try again after a short delay
+            setTimeout(() => {
+              if (remoteVideoRef.current && remoteVideoRef.current.srcObject === remoteStream) {
+                remoteVideoRef.current.play().catch(e => console.warn("Retry play failed:", e));
+              }
+            }, 100);
+          });
+        } else {
+          console.log("Remote stream has no video tracks yet");
+        }
       } else {
-        remoteVideoRef.current.srcObject = null;
+        console.log("No remote stream or tracks available");
+        if (remoteVideoRef.current.srcObject) {
+          remoteVideoRef.current.srcObject = null;
+        }
       }
     }
   }, [remoteStream]);
