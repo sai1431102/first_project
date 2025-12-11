@@ -88,12 +88,12 @@
 
 
 // src/pages/AuthPage.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 export default function AuthPage() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user, loading } = useAuth();
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -103,6 +103,30 @@ export default function AuthPage() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const redirectTo = params.get("redirect") || "/";
+
+  // Redirect authenticated users away from auth page
+  useEffect(() => {
+    if (!loading && user) {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [user, loading, navigate, redirectTo]);
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        color: "white",
+        fontSize: "1.25rem"
+      }}>
+        Loading...
+      </div>
+    );
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
